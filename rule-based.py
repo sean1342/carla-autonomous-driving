@@ -2,14 +2,16 @@ import glob
 import os
 import sys
 import carla
-import random
 import time
 import cv2
+import random
 import time
 import numpy as np
 import matplotlib.pyplot as plt
 from PIL import Image
 
+
+path_to_install = "/home/sean/CARLA_0.9.8"
 
 CAM_WIDTH = 640
 CAM_HEIGHT = 480
@@ -31,18 +33,17 @@ def detect_lanes(image):
     lines_left = cv2.HoughLinesP(cropped_left, 2, np.pi/180, 100, np.array([]), 40, 5)
     lines_right = cv2.HoughLinesP(cropped_right, 2, np.pi/180, 100, np.array([]), 40, 5)
 
-    line_image = np.zeros(image.shape)
     if lines_left is not None:
         for line in lines_left:
             left_x1, left_y1, left_x2, left_y2 = line.reshape(4)
 
-    line_image = np.zeros(image.shape)
+    left_line_x = [left_x1, left_x2]
+    left_line_y = [left_y1, left_y2]
+
     if lines_right is not None:
         for line in lines_right:
             right_x1, right_y1, right_x2, right_y2 = line.reshape(4)
 
-    left_line_x = [left_x1, left_x2]
-    left_line_y = [left_y1, left_y2]
     right_line_x = [right_x1, right_x2]
     right_line_y = [right_y1, right_y2]
 
@@ -62,7 +63,6 @@ def process_frame(image):
     left_line_x, left_line_y, right_line_x, right_line_y = detect_lanes(edges)
     left_slope = (left_line_y[0] - left_line_y[1]) / (left_line_x[0] - left_line_x[1])
     right_slope = (right_line_y[0] - right_line_y[1]) / (right_line_x[0] - right_line_x[1])
-    print(left_slope, right_slope)
 
     control(left_slope, right_slope)
 
@@ -72,10 +72,22 @@ def process_frame(image):
     plt.show()
 
 def control(left_slope, right_slope):
-    throttle_val = 0.2
-    steering_val = 0
+    throttle_val = 0.6
+    steering_val = 0.0
+    brake_val = 0.0
 
-    vehicle.apply_control(carla.VehicleControl(throttle=throttle_val, steer=steering_val))
+    velocity_vec = vehicle.get_velocity()
+    velocity_array = [velocity_vec]
+    velocity = math.sqrt(sum(pow(element, 2) for element in vector))
+
+    print(velocity.x, velocity.y, velocity.z)
+
+    # stop at horizontal lines
+    if (0.1 > left_slope > -0.1) or (0.1 > right_slope > -0.1):
+        throttle_val = 0.0
+        brake_val = 0.55
+
+    vehicle.apply_control(carla.VehicleControl(throttle=throttle_val, steer=steering_val, brake=brake_val))
 
     print("here")
 
@@ -93,6 +105,10 @@ except IndexError:
     pass
 
 try:
+    os.system("DISPLAY= " + path_to_install + "/./CarlaUE4.sh -quality-level=low -opengl &")
+
+    time.sleep(5)
+
     client = carla.Client("localhost", 2000)
     client.set_timeout(5.0)
     
