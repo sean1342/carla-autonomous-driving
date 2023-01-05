@@ -6,9 +6,10 @@ import time
 import cv2
 import random
 import time
+import math
 import numpy as np
 import matplotlib.pyplot as plt
-from PIL import Image
+import matplotlib.image as mpimg
 
 
 path_to_install = "/home/sean/CARLA_0.9.8"
@@ -75,21 +76,29 @@ def control(left_slope, right_slope):
     throttle_val = 0.6
     steering_val = 0.0
     brake_val = 0.0
+    stop = False
+
+    print(left_slope, right_slope)
 
     velocity_vec = vehicle.get_velocity()
-    velocity_array = [velocity_vec]
-    velocity = math.sqrt(sum(pow(element, 2) for element in vector))
+    velocity = math.sqrt(velocity_vec.x ** 2 + velocity_vec.y ** 2 + velocity_vec.z ** 2)
 
-    print(velocity.x, velocity.y, velocity.z)
+    print(velocity)
+
+    # TODO: keep velocity between 6 and 7
 
     # stop at horizontal lines
     if (0.1 > left_slope > -0.1) or (0.1 > right_slope > -0.1):
+        stop = True
+
+    if stop == True:
         throttle_val = 0.0
-        brake_val = 0.55
-
+        brake_val = 0.7
+        time.sleep(1)
+        throttle_val = 0.2
+        brake_val = 0.0
+    
     vehicle.apply_control(carla.VehicleControl(throttle=throttle_val, steer=steering_val, brake=brake_val))
-
-    print("here")
 
 actor_list = []
 
